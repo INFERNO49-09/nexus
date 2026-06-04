@@ -59,7 +59,7 @@ cd ~/nexus
 
 | Component | Minimum | Recommended |
 |-----------|---------|-------------|
-| OS | Ubuntu 20.04 / Debian 11 | Ubuntu 24.04 LTS |
+| OS | Ubuntu/Arch Linux | Arch Linux |
 | Python | 3.10 | 3.12 |
 | RAM | 8 GB | 16 GB+ |
 | Disk | 15 GB | 50 GB+ |

@@ -1,3 +1,6 @@
+![Uploading 260604_11h17m08s_screenshot.png…]()
+<img width="2721" height="1567" alt="260604_11h18m07s_screenshot" src="https://github.com/user-attachments/assets/9dd06ce5-67ec-468f-a716-09fddc202377" />
+<img width="2733" height="1577" alt="chat ui" src="https://github.com/user-attachments/assets/e09ed26a-df62-418b-9544-ed1b2362c5ed" />
 # Nexus - Local LLM Interface
 
 A production-ready local AI assistant with real streaming chat, persistent memory,

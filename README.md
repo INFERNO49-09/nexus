@@ -47,6 +47,9 @@ autonomous agents, multi-step web research, self-improving skills, and open code
 # 1. Clone / place nexus/ folder somewhere
 cd ~/nexus
 
+# remember to give permission to run
+chmod +x nexus.sh
+
 # 2. Install everything
 ./nexus.sh install
 

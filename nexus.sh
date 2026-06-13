@@ -9,6 +9,7 @@ NEXUS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="$NEXUS_DIR/.venv"
 ENV_FILE="$NEXUS_DIR/.env"
 PID_FILE="$NEXUS_DIR/.nexus.pid"
+FRONTEND_PID_FILE="$NEXUS_DIR/.nexus-frontend.pid"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BLUE='\033[0;34m'; BOLD='\033[1m'; RESET='\033[0m'
@@ -39,6 +40,9 @@ cmd_install(){
   PYVER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
   info "Python $PYVER"
 
+  command -v npm >/dev/null 2>&1 || error "npm required for the Vite frontend. Install Node.js/npm first."
+  info "npm found: $(npm --version)"
+
   command -v ollama >/dev/null 2>&1 || {
     warn "Ollama not found. Installing..."
     curl -fsSL https://ollama.com/install.sh | sh
@@ -58,6 +62,11 @@ cmd_install(){
   "$VENV_DIR/bin/pip" install -r "$NEXUS_DIR/requirements.txt" -q
   info "All dependencies installed"
 
+  section "Installing frontend dependencies"
+  cd "$NEXUS_DIR"
+  npm install
+  info "Frontend dependencies installed"
+
   section "Configuration"
   if [ ! -f "$ENV_FILE" ]; then
     cp "$NEXUS_DIR/.env.example" "$ENV_FILE"
@@ -73,6 +82,11 @@ cmd_install(){
     ollama pull mistral
   fi
   info "Model ready"
+
+  section "Building frontend"
+  cd "$NEXUS_DIR"
+  npm run build
+  info "Frontend build ready"
 
   echo ""
   echo -e "${GREEN}${BOLD}Installation complete!${RESET}"
@@ -96,6 +110,9 @@ cmd_start(){
   # Check venv
   [ -d "$VENV_DIR" ] || error "Not installed. Run: ./nexus.sh install"
 
+  command -v npm >/dev/null 2>&1 || error "npm required for the Vite frontend. Install Node.js/npm first."
+  [ -d "$NEXUS_DIR/node_modules" ] || error "Frontend dependencies missing. Run: ./nexus.sh install"
+
   # Start Ollama if not running
   if ! pgrep -x ollama >/dev/null 2>&1; then
     info "Starting Ollama..."
@@ -106,6 +123,12 @@ cmd_start(){
 
   # Create logs dir
   mkdir -p "$NEXUS_DIR/logs"
+
+  # Build frontend
+  info "Building frontend..."
+  cd "$NEXUS_DIR"
+  npm run build > "$NEXUS_DIR/logs/frontend-build.log" 2>&1
+  info "Frontend built"
 
   # Start backend
   info "Starting backend on :8000..."
@@ -138,6 +161,15 @@ cmd_start(){
 
 cmd_stop(){
   section "Stopping Nexus"
+  if [ -f "$FRONTEND_PID_FILE" ]; then
+    FRONTEND_PID=$(cat "$FRONTEND_PID_FILE")
+    if kill -0 "$FRONTEND_PID" 2>/dev/null; then
+      kill "$FRONTEND_PID"
+      info "Frontend dev server stopped (PID $FRONTEND_PID)"
+    fi
+    rm -f "$FRONTEND_PID_FILE"
+  fi
+
   if [ -f "$PID_FILE" ]; then
     PID=$(cat "$PID_FILE")
     if kill -0 "$PID" 2>/dev/null; then
@@ -187,17 +219,40 @@ cmd_dev(){
   banner
   section "Starting in development mode (auto-reload)"
   [ -d "$VENV_DIR" ] || error "Not installed. Run: ./nexus.sh install"
+  command -v npm >/dev/null 2>&1 || error "npm required for the Vite frontend. Install Node.js/npm first."
+  [ -d "$NEXUS_DIR/node_modules" ] || error "Frontend dependencies missing. Run: ./nexus.sh install"
   # Start Ollama
   pgrep -x ollama >/dev/null 2>&1 || { ollama serve &>/dev/null & sleep 2; }
   info "Ollama running"
+
+  mkdir -p "$NEXUS_DIR/logs"
+
+  cd "$NEXUS_DIR"
+  info "Starting Vite frontend on :5173"
+  npm run dev > "$NEXUS_DIR/logs/frontend-dev.log" 2>&1 &
+  echo $! > "$FRONTEND_PID_FILE"
+
+  cleanup_dev(){
+    if [ -f "$FRONTEND_PID_FILE" ]; then
+      FRONTEND_PID=$(cat "$FRONTEND_PID_FILE")
+      kill "$FRONTEND_PID" 2>/dev/null || true
+      rm -f "$FRONTEND_PID_FILE"
+    fi
+  }
+  trap cleanup_dev EXIT INT TERM
+
   cd "$NEXUS_DIR/backend"
   info "Starting with --reload on :8000"
+  echo -e "  UI:      ${BOLD}http://localhost:5173${RESET}"
+  echo -e "  API:     ${BOLD}http://localhost:8000/docs${RESET}"
   "$VENV_DIR/bin/python" -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
 }
 
 cmd_update(){
   section "Updating dependencies"
   "$VENV_DIR/bin/pip" install -r "$NEXUS_DIR/requirements.txt" --upgrade -q
+  cd "$NEXUS_DIR"
+  npm install
   info "Updated"
 }
 

@@ -1,0 +1,11 @@
+node_modules/
+frontend/dist/
+
+.venv/
+__pycache__/
+*.py[cod]
+
+.env
+.nexus.pid
+.nexus-frontend.pid
+logs/

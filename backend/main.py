@@ -67,7 +67,9 @@ app.include_router(system.router,   prefix="/api/system",   tags=["System"])
 
 # Serve frontend
 import os
-frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
+frontend_root = os.path.join(os.path.dirname(__file__), "..", "frontend")
+frontend_dist = os.path.join(frontend_root, "dist")
+frontend_path = frontend_dist if os.path.exists(frontend_dist) else frontend_root
 if os.path.exists(frontend_path):
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
 
